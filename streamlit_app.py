@@ -11,6 +11,7 @@ SAVE_DIR = "saved_files/"
 if not os.path.exists(SAVE_DIR):
     os.makedirs(SAVE_DIR)
 
+
 def find_word_starting_with(text, prefix):
     pattern = r'\b' + re.escape(prefix) + r'\w*\b'
     matches = re.finditer(pattern, text, re.IGNORECASE)
@@ -31,7 +32,6 @@ def update_labels(texts, labels_col, prefix, tag):
         try:
             labels = ast.literal_eval(labels_col[index])
         except (ValueError, SyntaxError):
-            print(f"Invalid format at index {index}: {labels_col[index]}")
             updated_labels.append(labels_col[index])
             continue
         position = find_word_starting_with(text, prefix)
@@ -58,17 +58,44 @@ def highlight_special_words(text, labels):
 
 def main():
     st.title("Upload CSV File or Enter Text")
-
     menu = ["Upload CSV", "Enter Text"]
     choice = st.sidebar.selectbox("Menu", menu)
 
+    # Применение стилей
+    st.markdown(
+        """
+        <style>
+        .big-table {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+        }
+        .big-table table {
+            width: 200% !important;
+        }
+        .big-table td {
+            white-space: normal !important;
+            word-wrap: break-word;
+            width: 50%;
+        }
+        /* Увеличиваем высоту блока textarea */
+        .stTextArea textarea {
+            min-height: 400px;
+        }
+        /* Увеличиваем ширину всех блоков Streamlit */
+        .main > div {
+            max-width: 2000px;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
     if choice == "Upload CSV":
         st.subheader("Upload CSV File")
-
         data_file = st.file_uploader("Upload CSV", type=["csv"])
         if data_file is not None:
             df = pd.read_csv(data_file)
-
             # Проверка наличия колонки 'label' и инициализация меток при её отсутствии
             if 'label' not in df.columns:
                 df['label'] = df['processed_text'].apply(lambda x: str(initialize_labels(x)))
@@ -77,19 +104,24 @@ def main():
 
             # Подготовка html представления с подсветкой
             df['processed_text'] = df.apply(
-                lambda row: highlight_special_words(row['processed_text'], ast.literal_eval(row['label'])), axis=1)
+                lambda row: highlight_special_words(row['processed_text'], ast.literal_eval(row['label'])),
+                axis=1
+            )
 
-            st.dataframe(df)
+            # создаём таблицу с одинаковыми размерами колонок processed_text и label
+            html_table = df.to_html(escape=False, index=False)
+            html_table = re.sub(r'<td>', '<td class="wide-column">', html_table)
 
             temp_file_name = os.path.join(SAVE_DIR, f"processed_{uuid.uuid4().hex}.csv")
             df.to_csv(temp_file_name, index=False)
             with open(temp_file_name, 'rb') as f:
                 st.download_button(f"Download Updated CSV", f, file_name="processed.csv")
 
+            st.write(f"<div class='big-table'>{html_table}</div>", unsafe_allow_html=True)
+
     elif choice == "Enter Text":
         st.subheader("Enter Text")
-
-        text_input = st.text_area("Input Text", "Введите текст здесь...")
+        text_input = st.text_area("Input Text", "NAME да а нет объект объект не смотрели аа потому что аа интересовала меня делать лене скидку они...")
         if st.button("Process Text"):
             texts = [text_input]
             labels_col = [str(initialize_labels(text_input))]

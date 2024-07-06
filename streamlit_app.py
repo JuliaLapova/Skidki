@@ -80,7 +80,7 @@ def main():
         }
         /* Увеличиваем высоту блока textarea */
         .stTextArea textarea {
-            min-height: 400px;
+            min-height: 200px;
         }
         /* Увеличиваем ширину всех блоков Streamlit */
         .main > div {

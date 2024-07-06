@@ -5,7 +5,7 @@ import pandas as pd
 import re
 import ast
 from io import StringIO
-import uvicorn
+import uuid
 import os
 
 app = FastAPI()
@@ -13,7 +13,6 @@ app = FastAPI()
 # Путь для сохранения файлов
 SAVE_DIR = "saved_files/"
 os.makedirs(SAVE_DIR, exist_ok=True)  # Создать папку, если её не существует
-
 
 def find_word_starting_with(text, prefix):
     pattern = r'\b' + re.escape(prefix) + r'\w*\b'
@@ -23,11 +22,9 @@ def find_word_starting_with(text, prefix):
         return start_index + 1
     return -1
 
-
 def initialize_labels(text):
     words = text.split()
     return ['O'] * len(words)
-
 
 def update_labels(texts, labels_col, prefix, tag):
     updated_labels = []
@@ -44,7 +41,6 @@ def update_labels(texts, labels_col, prefix, tag):
         updated_labels.append(str(labels))
     return updated_labels
 
-
 def highlight_special_words(text, labels):
     words = text.split()
     highlighted_text = []
@@ -58,7 +54,6 @@ def highlight_special_words(text, labels):
             highlighted_text.append(word)
 
     return ' '.join(highlighted_text)
-
 
 @app.get("/", response_class=HTMLResponse)
 async def main():
@@ -138,7 +133,6 @@ async def main():
     """
     return HTMLResponse(content=content)
 
-
 @app.post("/process-csv")
 async def process_csv(file: UploadFile = File(...)):
     contents = await file.read()
@@ -156,10 +150,17 @@ async def process_csv(file: UploadFile = File(...)):
     # Подготовка обновленного CSV для скачивания
     updated_csv = df.to_csv(index=False)
 
-    # Укажите путь для сохранения файла
-    file_name = os.path.join(SAVE_DIR, "processed.csv")
-    with open(file_name, 'w', newline='') as temp_file:
-        temp_file.write(updated_csv)
+    # Проверка существования директории
+    if not os.path.exists(SAVE_DIR):
+        os.makedirs(SAVE_DIR)
+
+    # Использование временного файла
+    temp_file_name = os.path.join(SAVE_DIR, f"processed_{uuid.uuid4().hex}.csv")
+    try:
+        with open(temp_file_name, 'w', newline='') as temp_file:
+            temp_file.write(updated_csv)
+    except Exception as e:
+        return HTMLResponse(content=f"Error writing the file: {e}")
 
     # Сортировка столбцов для правильного отображения
     df_to_display = df[['processed_text', 'label']]
@@ -169,14 +170,13 @@ async def process_csv(file: UploadFile = File(...)):
 
     html_content = f"""
         <h1>Updated CSV Results</h1>
-        <a href="/download-processed-csv?file={file_name}" download="processed.csv">Download Updated CSV</a>
+        <a href="/download-processed-csv?file={temp_file_name}" download="processed.csv">Download Updated CSV</a>
         <h2>Data Preview</h2>
         {table_html}
         <a href="/">Go Back</a>
     """
 
     return HTMLResponse(content=html_content)
-
 
 @app.post("/process-text")
 async def process_text(text: str = Form(...)):
@@ -201,7 +201,6 @@ async def process_text(text: str = Form(...)):
 
     return HTMLResponse(content=html_content)
 
-
 @app.get("/download-processed-csv")
 async def download_processed_csv(file: str):
     # Передача содержимого файла клиенту
@@ -210,7 +209,6 @@ async def download_processed_csv(file: str):
         media_type="text/csv",
         headers={"Content-Disposition": f"attachment; filename=processed.csv"}
     )
-
 
 if __name__ == "__main__":
     import uvicorn

@@ -7,7 +7,8 @@ Upload CSV:
 
 
 Enter text:
-![image](https://github.com/JuliaLapova/Skidki/assets/119416226/643aa169-658f-41c8-967e-f0f026169e95)
+![image](https://github.com/JuliaLapova/Skidki/assets/119416226/23bfa493-ae42-4bfa-8837-b198f9ae854a)
+
 
 
 
